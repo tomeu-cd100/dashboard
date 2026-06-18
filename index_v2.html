@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard de Notes · ESO 1r A</title>
+<style>
+  :root{
+    --bg:#0f172a; --panel:#1e293b; --panel2:#273449; --line:#334155;
+    --text:#e2e8f0; --muted:#94a3b8;
+    --na:#ef4444;   /* No assoliment */
+    --as:#f59e0b;   /* Assoliment satisfactori */
+    --an:#22c55e;   /* Assoliment notable */
+    --ae:#3b82f6;   /* Assoliment excel·lent */
+    --none:#475569; /* no cursa */
+    --accent:#38bdf8;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Segoe UI",system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+  header{padding:20px 28px;background:linear-gradient(110deg,#0c4a6e,#1e293b);border-bottom:1px solid var(--line)}
+  header h1{margin:0;font-size:22px;font-weight:700}
+  header .sub{color:var(--accent);margin-top:4px;font-size:14px;letter-spacing:.3px}
+  .wrap{max-width:1280px;margin:0 auto;padding:24px 28px 60px}
+
+  /* KPI cards */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:26px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+  .kpi .v{font-size:30px;font-weight:800;line-height:1}
+  .kpi .l{color:var(--muted);margin-top:8px;font-size:12.5px}
+  .kpi.good .v{color:var(--an)} .kpi.warn .v{color:var(--as)} .kpi.bad .v{color:var(--na)}
+
+  .grid{display:grid;gap:20px;grid-template-columns:1fr 1fr}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px}
+  .card h2{margin:0 0 4px;font-size:16px}
+  .card .hint{color:var(--muted);font-size:12px;margin-bottom:16px}
+  .full{grid-column:1/-1}
+
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin:6px 0 16px;font-size:12.5px;align-items:center}
+  .legend span{display:inline-flex;align-items:center;gap:6px;color:var(--muted)}
+  .dot{width:13px;height:13px;border-radius:4px;display:inline-block}
+
+  /* donut */
+  .donut-wrap{display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+  .donut{width:170px;height:170px;border-radius:50%;flex:0 0 auto}
+  .donut-c{position:relative}
+  .donut-c .center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .donut-c .center b{font-size:26px}
+  .donut-c .center small{color:var(--muted);font-size:11px}
+  .donut-legend{display:flex;flex-direction:column;gap:8px}
+  .donut-legend div{display:flex;align-items:center;gap:8px}
+
+  /* horizontal bars (ranking) */
+  .barrow{display:grid;grid-template-columns:64px 1fr 54px;align-items:center;gap:10px;margin-bottom:7px;cursor:pointer;border-radius:8px;padding:3px 4px}
+  .barrow:hover{background:var(--panel2)}
+  .barrow .name{color:var(--muted);font-size:12.5px;white-space:nowrap}
+  .bar{height:18px;border-radius:5px;background:var(--panel2);overflow:hidden}
+  .bar>i{display:block;height:100%;border-radius:5px}
+  .barrow .val{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
+
+  /* stacked subject bars */
+  .subj{margin-bottom:13px}
+  .subj .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+  .subj .top .nm{font-size:13px}
+  .subj .top .mt{font-size:12px;color:var(--muted)}
+  .stack{height:22px;border-radius:5px;overflow:hidden;display:flex;background:var(--panel2)}
+  .stack>i{height:100%;transition:width .3s;display:flex;align-items:center;justify-content:center;
+           font-style:normal;font-size:11px;font-weight:800;color:#0b1220;overflow:hidden;white-space:nowrap}
+  .crit{color:var(--na);font-weight:700}
+
+  /* heatmap */
+  .hm-scroll{overflow-x:auto}
+  table.hm{border-collapse:collapse;font-size:11px}
+  table.hm th,table.hm td{padding:0;text-align:center}
+  table.hm thead th{position:sticky;top:0;background:var(--panel);height:118px;vertical-align:bottom;padding-bottom:6px}
+  table.hm thead th .rot{writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;color:var(--muted);font-weight:600;font-size:11px}
+  table.hm tbody td{width:30px;height:26px}
+  table.hm .rowh{position:sticky;left:0;background:var(--panel);text-align:left;padding:0 10px 0 4px;font-size:11.5px;white-space:nowrap;color:var(--text);cursor:pointer}
+  table.hm .rowh:hover{color:var(--accent)}
+  .cell{width:28px;height:24px;margin:1px auto;border-radius:5px;display:flex;align-items:center;justify-content:center;color:#0b1220;font-weight:800;font-size:10px}
+  .cell.empty{background:transparent}
+  .cell.empty::after{content:"·";color:var(--none)}
+  .corner{position:sticky;left:0;background:var(--panel);z-index:2}
+  .avgcell{font-weight:800;font-variant-numeric:tabular-nums}
+
+  /* risk list */
+  .risk{display:flex;flex-direction:column;gap:10px}
+  .risk .r{background:var(--panel2);border-radius:10px;padding:11px 14px;border-left:4px solid var(--na)}
+  .risk .r.warn{border-left-color:var(--as)}
+  .risk .r .h{display:flex;justify-content:space-between;align-items:center}
+  .risk .r .h b{font-size:14px}
+  .risk .r .badge{background:var(--na);color:#fff;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700}
+  .risk .r.warn .badge{background:var(--as);color:#3a2a00}
+  .risk .r .subs{margin-top:6px;display:flex;gap:6px;flex-wrap:wrap}
+  .tag{background:#3b1216;color:#fecaca;border:1px solid #7f1d1d;border-radius:6px;padding:2px 8px;font-size:11px}
+
+  /* modal student detail */
+  .modal{position:fixed;inset:0;background:rgba(2,6,23,.72);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
+  .modal.open{display:flex}
+  .sheet{background:var(--panel);border:1px solid var(--line);border-radius:18px;max-width:640px;width:100%;max-height:88vh;overflow:auto;padding:24px}
+  .sheet .x{float:right;cursor:pointer;color:var(--muted);font-size:22px;line-height:1;border:none;background:none}
+  .sheet h3{margin:0 0 2px}
+  .sheet .meta{color:var(--muted);font-size:13px;margin-bottom:18px}
+  .gradelist{display:block}
+  .ambitgrp{margin-bottom:14px}
+  .ambith{display:flex;align-items:center;gap:8px;font-weight:700;font-size:12.5px;color:var(--muted);margin:0 0 6px;text-transform:uppercase;letter-spacing:.4px}
+  .gradelist .g{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 12px;background:var(--panel2);border-radius:9px;margin-bottom:5px}
+  .gradelist .g .pill{padding:2px 10px;border-radius:20px;font-weight:800;font-size:11px;color:#0b1220}
+  .sysmark{color:var(--as);cursor:help}
+  .mline{font-size:12.5px;margin-top:6px}
+  .mline.ok{color:var(--an)} .mline.bad{color:var(--na)} .mline.sys{color:var(--as)}
+  .tag.sys{background:#0c2533;color:#bae6fd;border-color:#0369a1}
+  .strong{margin-top:6px;font-size:11.5px;color:var(--an)}
+  .printbar{text-align:center;padding:10px 20px 0}
+  .printbar .upbtn{font-size:14px;padding:11px 22px}
+  footer{color:var(--muted);text-align:center;font-size:12px;padding:20px}
+
+  @media print{
+    @page{margin:12mm}
+    body{background:#fff;color:#111;font-size:11px}
+    .printbar,.modal,#viewTabs{display:none!important}
+    header{background:#0c4a6e!important;color:#fff}
+    header select,header label{display:none!important}
+    .grid{display:block}
+    .card,.kpi{break-inside:avoid;page-break-inside:avoid;background:#fff!important;border:1px solid #cbd5e1!important;color:#111;margin-bottom:14px}
+    .card h2,.kpi .v{color:#111!important}
+    .card .hint,.kpi .l,.subj .top .mt,.barrow .name,.legend span{color:#475569!important}
+    /* la zona de pujada no s'imprimeix */
+    .wrap > .card:first-child{display:none!important}
+    *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+
+    /* impressió d'una sola fitxa d'alumne */
+    body.print-student header,body.print-student .wrap,body.print-student .printbar,body.print-student footer{display:none!important}
+    body.print-student .modal{display:block!important;position:static;inset:auto;background:#fff;padding:0}
+    body.print-student .sheet{max-width:none;width:auto;max-height:none;overflow:visible;border:none;background:#fff;color:#111;padding:0}
+    body.print-student .sheet .x,body.print-student .sheetbtns{display:none!important}
+    body.print-student .meta,body.print-student .mlegend,body.print-student .pcol .pnote{color:#475569!important}
+    body.print-student .g,body.print-student .acords textarea{background:#fff!important;border:1px solid #cbd5e1!important;color:#111!important}
+    body.print-student .ambith{color:#475569!important}
+  }
+  .toggle{display:inline-flex;gap:4px;background:var(--panel2);border-radius:9px;padding:3px;margin-bottom:14px}
+  .toggle button{background:none;border:none;color:var(--muted);padding:6px 12px;border-radius:7px;cursor:pointer;font-size:12.5px}
+  .toggle button.active{background:var(--accent);color:#06283d;font-weight:700}
+  select#groupSel{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:8px 12px;font-size:14px;cursor:pointer}
+  .drop{border:2px dashed var(--line);border-radius:14px;padding:26px;text-align:center;color:var(--muted);
+        transition:.15s;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:12px}
+  .drop:hover,.drop.over{border-color:var(--accent);background:var(--panel2);color:var(--text)}
+  .drop .big{font-size:15px}
+  .upbtn{background:var(--accent);color:#06283d;border:none;border-radius:9px;padding:9px 18px;font-weight:700;font-size:13px;cursor:pointer}
+  .upmsg{margin-top:12px;font-size:13px}
+  .upmsg.ok{color:var(--an)} .upmsg.err{color:var(--na)}
+  /* evolució */
+  .evochips{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+  .evochip{background:var(--panel2);border-radius:12px;padding:12px 18px;min-width:120px;text-align:center}
+  .evochip .t{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+  .evochip .v{font-size:26px;font-weight:800;margin:2px 0;line-height:1}
+  .evochip .s{color:var(--muted);font-size:11px}
+  .arrowsep{color:var(--muted);font-size:20px}
+  .tr{display:inline-block;font-weight:700;font-size:12px;margin-top:4px}
+  .tr.good{color:var(--an)} .tr.bad{color:var(--na)} .tr.flat{color:var(--muted)}
+  .evotable{border-collapse:collapse;width:100%;font-size:12.5px}
+  .evotable th,.evotable td{padding:7px 12px;text-align:center;border-bottom:1px solid var(--line)}
+  .evotable th{color:var(--muted);font-weight:600}
+  .evotable .evname{text-align:left;cursor:pointer;color:var(--text)}
+  .evotable .evname:hover{color:var(--accent)}
+  .evc{font-variant-numeric:tabular-nums;font-weight:700}
+  .dropbox{background:#3b1216;border:1px solid #7f1d1d;border-radius:10px;padding:11px 14px;margin-bottom:14px;font-size:13px;color:#fecaca}
+  .dropbox.ok{background:#0c2a16;border-color:#166534;color:#bbf7d0}
+  .tag.warn2{background:#3a2a00;color:#fde68a;border-color:#a16207;cursor:pointer}
+  .evoh{font-size:13.5px;margin:18px 0 8px;font-weight:700}
+  .evoh span{color:var(--muted);font-weight:400;font-size:12px}
+  /* perfils */
+  .profiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+  .pcol{background:var(--panel2);border-radius:12px;padding:14px}
+  .pcol .ph{display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:14px}
+  .pcol .pn{background:var(--bg);border-radius:20px;padding:1px 11px;font-size:13px}
+  .pcol .pnote{color:var(--muted);font-size:11.5px;margin:6px 0 10px;min-height:30px}
+  .plist{display:flex;flex-wrap:wrap;gap:6px}
+  .pchip{background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:3px 9px;font-size:12px;cursor:pointer}
+  .pchip:hover{border-color:var(--accent);color:var(--accent)}
+  .pchip small{color:var(--muted)}
+  .pempty{color:var(--muted)}
+  /* grups de reforç */
+  .rg{background:var(--panel2);border-radius:10px;padding:11px 14px;margin-bottom:9px}
+  .rg .rgh{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}
+  .rg .rgn{color:var(--muted);font-size:12px}
+  /* fitxa: perfil, posicionament, llegenda, acords */
+  .pbadge{font-size:12px;font-weight:700;color:#06283d;border-radius:20px;padding:2px 10px;vertical-align:middle;margin-left:8px}
+  .ambith{justify-content:space-between}
+  .pos{font-size:11px;font-weight:700;text-transform:none;letter-spacing:0}
+  .pos.up{color:var(--an)} .pos.down{color:var(--na)} .pos.mid{color:var(--muted)}
+  .mlegend{margin-top:16px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}
+  .mlegend span{display:inline-flex;align-items:center;gap:6px}
+  .acords{margin-top:16px}
+  .acords label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
+  .acords label small{font-weight:400;color:var(--muted)}
+  .acords textarea{width:100%;min-height:80px;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-family:inherit;font-size:13px;resize:vertical}
+  .sheetbtns{margin-top:14px;text-align:right}
+  .cbBtn{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:8px 12px;font-size:13px;cursor:pointer}
+  .cbBtn.on{background:var(--accent);color:#06283d;font-weight:700}
+  /* resum executiu */
+  .copybtn{font-size:12px;font-weight:600;background:var(--panel2);color:var(--accent);border:1px solid var(--line);border-radius:7px;padding:4px 10px;cursor:pointer;margin-left:8px;vertical-align:middle}
+  .copybtn:hover{border-color:var(--accent)}
+  #brief .bl{margin:4px 0;font-size:14px;line-height:1.5}
+  .briefprio{margin-top:12px;background:var(--panel2);border-radius:10px;padding:12px 16px}
+  .briefprio b{font-size:13px}
+  .briefprio ul{margin:6px 0 0;padding-left:20px}
+  .briefprio li{margin:4px 0;font-size:13.5px}
+  /* cohesió */
+  .cohtop{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-end}
+  .cohstat .v{font-size:22px;font-weight:800}
+  .cohstat .l{color:var(--muted);font-size:12px;margin-top:3px}
+  .cohhist{display:flex;gap:14px;align-items:flex-end}
+  .cohhist .cb{display:flex;flex-direction:column;align-items:center;gap:3px;width:46px}
+  .cohhist .cbar{width:30px;border-radius:5px 5px 0 0}
+  .cohhist .cbn{font-weight:700;font-size:13px}
+  .cohhist .cbl{color:var(--muted);font-size:11px}
+  /* objectius */
+  .objrow{display:grid;grid-template-columns:200px 150px auto auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+  .objrow:last-child{border-bottom:none}
+  .objlab{font-weight:600;font-size:13px}
+  .objval{font-variant-numeric:tabular-nums;font-weight:700}
+  .objtrend{font-weight:600;font-size:11px;margin-left:6px}
+  .objtrend.good{color:var(--an)} .objtrend.bad{color:var(--na)} .objtrend.flat{color:var(--muted)}
+  .objset{font-size:12px;color:var(--muted)}
+  .objset input{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:7px;padding:4px 7px;font-size:13px}
+  .objstat{font-size:12px;font-weight:700;border-radius:20px;padding:2px 10px}
+  .objstat.ok{background:#0c2a16;color:#bbf7d0} .objstat.no{background:#3a2a00;color:#fde68a} .objstat.none{background:var(--panel2);color:var(--muted)}
+  .objbar{grid-column:1/-1;height:8px;background:var(--panel2);border-radius:5px;overflow:hidden}
+  .objbar>i{display:block;height:100%;border-radius:5px}
+  @media(max-width:680px){.objrow{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
+    <div>
+      <h1 id="hTitle">Dashboard de Notes</h1>
+      <div class="sub" id="hSub">—</div>
+    </div>
+    <div style="display:flex;gap:14px;align-items:flex-end">
+      <div>
+        <label style="display:block;color:var(--muted);font-size:11px;margin-bottom:4px">VISTA</label>
+        <button class="cbBtn" id="compBtn" type="button" title="Prioritza el llenguatge competencial (NA/AS/AN/AE) en lloc de la mitjana numèrica">🎓 Competencial</button>
+      </div>
+      <div>
+        <label style="display:block;color:var(--muted);font-size:11px;margin-bottom:4px">ACCESSIBILITAT</label>
+        <button class="cbBtn" id="cbBtn" type="button" title="Canvia a una paleta de colors apta per a daltònics">🎨 Mode daltònic</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="card full" style="margin-bottom:24px">
+    <h2>Puja el teu Excel de notes</h2>
+    <div class="hint">Format esperat: el mateix full de notes (títol a dalt, parelles Matèria/Rec., Mitjana i Suspesos). Tot es processa al teu navegador — cap dada surt de l'ordinador.</div>
+    <div class="drop" id="drop">
+      <div class="big">📊 Arrossega aquí un fitxer <b>.xlsx</b></div>
+      <button class="upbtn" id="browseBtn" type="button">Triar fitxer</button>
+      <input type="file" id="fileInput" accept=".xlsx" hidden>
+    </div>
+    <div class="upmsg" id="uploadMsg"></div>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="toggle" id="viewTabs" style="margin:0 0 20px">
+    <button data-view="tot" class="active" type="button">Tot</button>
+    <button data-view="junta" type="button">🧑‍🏫 Junta</button>
+    <button data-view="tutoria" type="button">👤 Tutoria</button>
+    <button data-view="dades" type="button">📊 Dades</button>
+  </div>
+
+  <div class="grid" id="mainGrid">
+    <div class="card full" id="briefCard" data-view="junta">
+      <h2>Resum executiu <button class="copybtn" id="copyBrief" type="button">📋 Copiar</button></h2>
+      <div class="hint">Lectura automàtica per a la junta d'avaluació · es recalcula amb el grup i el trimestre seleccionats.</div>
+      <div id="brief"></div>
+    </div>
+
+    <div class="card full" id="objCard" data-view="junta">
+      <h2>Objectius de millora</h2>
+      <div class="hint">Fixa fites per al grup i en fes seguiment. Es mantenen durant la sessió.</div>
+      <div id="objectives"></div>
+    </div>
+
+    <div class="card full" id="evoCard" data-view="junta dades">
+      <h2>Evolució entre trimestres</h2>
+      <div class="hint" id="evoHint"></div>
+      <div id="evoBody"></div>
+    </div>
+
+    <div class="card" data-view="dades">
+      <h2>Distribució global de qualificacions</h2>
+      <div class="hint">Repartiment de totes les notes posades a la classe</div>
+      <div class="donut-wrap">
+        <div class="donut-c">
+          <div class="donut" id="donut"></div>
+          <div class="center"><b id="donutN">0</b><small>notes</small></div>
+        </div>
+        <div class="donut-legend" id="donutLegend"></div>
+      </div>
+    </div>
+
+    <div class="card" data-view="dades tutoria">
+      <h2>Rànquing d'alumnes per mitjana</h2>
+      <div class="hint">Clica un alumne per veure'n la fitxa · color segons risc</div>
+      <div id="ranking"></div>
+    </div>
+
+    <div class="card full" data-view="junta dades">
+      <h2>Cohesió del grup</h2>
+      <div class="hint">Com d'homogeni o polaritzat és el grup. Orienta si cal diferenciar molt la metodologia o mantenir un ritme comú.</div>
+      <div id="cohesion"></div>
+    </div>
+
+    <div class="card full" data-view="junta tutoria">
+      <h2>Perfils de l'alumnat</h2>
+      <div class="hint">Atenció a la diversitat en les dues direccions: del reforç a l'ampliació. Clica qualsevol alumne per veure'n la fitxa.</div>
+      <div class="profiles" id="profiles"></div>
+    </div>
+
+    <div class="card full" data-view="junta dades">
+      <h2>Anàlisi per matèria</h2>
+      <div class="hint">Ordenat de més a menys suspesos · les matèries crítiques (≥40% NA) ressaltades</div>
+      <div class="legend" id="legend1"></div>
+      <div id="subjects"></div>
+    </div>
+
+    <div class="card full" data-view="dades">
+      <h2>Resultats per àmbit competencial</h2>
+      <div class="hint">Les matèries agrupades per àmbit (LOMLOE). Ajuda a veure si la dificultat és lingüística, científica, social… i no només d'una assignatura.</div>
+      <div class="legend" id="legend3"></div>
+      <div id="ambits"></div>
+    </div>
+
+    <div class="card full" data-view="junta">
+      <h2>Àrees instrumentals · llengües i matemàtiques</h2>
+      <div class="hint">Els NA en àrees instrumentals són els més determinants per a la promoció. Prioritat per a la junta d'avaluació.</div>
+      <div class="risk" id="instrumental"></div>
+    </div>
+
+    <div class="card full" data-view="junta tutoria">
+      <h2>Alumnes a tocar d'aprovar</h2>
+      <div class="hint">Amb 1 o 2 matèries no assolides: és on un reforç concret té més retorn. Les matèries marcades amb ⚠ són dificultat compartida per la classe (tema de junta).</div>
+      <div class="risk" id="close"></div>
+    </div>
+
+    <div class="card full" data-view="junta">
+      <h2>Propostes de grups de reforç</h2>
+      <div class="hint">Alumnes que comparteixen la mateixa matèria no assolida (NA). Ajuda a organitzar desdoblaments o reforços concrets. ⚠ = dificultat compartida per la classe.</div>
+      <div id="reinforce"></div>
+    </div>
+
+    <div class="card full" data-view="dades">
+      <h2>Mapa de calor · alumnes × matèries</h2>
+      <div class="hint">Visió de conjunt: detecta patrons de cop d'ull. Clica el nom d'un alumne per veure'n la fitxa.</div>
+      <div class="legend" id="legend2"></div>
+      <div class="hm-scroll" id="heatmap"></div>
+    </div>
+
+    <div class="card full" data-view="junta tutoria">
+      <h2>Alumnes que necessiten seguiment</h2>
+      <div class="hint">Alumnes amb 3 o més matèries suspeses · ordenats per nombre de matèries no assolides (NA)</div>
+      <div class="risk" id="risk"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal">
+  <div class="sheet">
+    <button class="x" onclick="closeModal()">×</button>
+    <h3 id="mName"></h3>
+    <div class="meta" id="mMeta"></div>
+    <div class="gradelist" id="mGrades"></div>
+    <div class="mlegend" id="mLegend"></div>
+    <div class="acords">
+      <label for="mNotes">📝 Acords i mesures <small>(junta d'avaluació / tutoria)</small></label>
+      <textarea id="mNotes" placeholder="Ex.: reforç de Castellà en hora d'optativa · compromís de deures setmanals · entrevista amb la família · derivació a l'EAP…"></textarea>
+    </div>
+    <div class="sheetbtns">
+      <button class="upbtn" id="mPrint" type="button">🖨️ Imprimir aquesta fitxa</button>
+    </div>
+  </div>
+</div>
+
+<div class="printbar">
+  <button class="upbtn" id="printBtn" type="button">🖨️ Imprimir el dashboard</button>
+  <button class="upbtn" id="csvBtn" type="button" style="background:var(--panel2);color:var(--text);border:1px solid var(--line)">⬇️ Exportar CSV</button>
+</div>
+
+<footer id="foot"></footer>
+
+<script src="data.js"></script>
+<script>
+const C = {NA:'var(--na)',AS:'var(--as)',AN:'var(--an)',AE:'var(--ae)'};
+const SCORE = {NA:1,AS:2,AN:3,AE:4};
+const LABEL = {NA:'No assoliment',AS:'Assoliment satisfactori',AN:'Assoliment notable',AE:'Assoliment excel·lent'};
+const ORDER = ['NA','AS','AN','AE'];
+const GROUPS = window.GROUPS || [];
+
+// Un "grup/classe" pot tenir diversos trimestres. CLASSES: nom -> [snapshots ordenats per trimestre]
+function termNum(t){const m=(t||'').match(/(\d+)/);return m?+m[1]:0;}
+function buildClasses(){
+  const map={};
+  GROUPS.forEach(g=>{(map[g.group]=map[g.group]||[]).push(g);});
+  Object.values(map).forEach(arr=>arr.sort((a,b)=>termNum(a.term)-termNum(b.term)));
+  return map;
+}
+let CLASSES = buildClasses();
+let currentClass = Object.keys(CLASSES)[0];
+let D;  // snapshot del trimestre més recent del grup actual
+function setCurrent(){const arr=CLASSES[currentClass]; D = (arr&&arr.length)?arr[arr.length-1]:null;}
+setCurrent();
+
+// --- Àmbits competencials (LOMLOE) ---
+const AMBIT_ORDER = ['Lingüístic','Cientificotecnològic','Social i humanístic','Artístic','Educació Física','Treball globalitzat','Valors / Religió','Optatives'];
+const AMBIT_COLOR = {
+  'Lingüístic':'#818cf8','Cientificotecnològic':'#2dd4bf','Social i humanístic':'#fb923c',
+  'Artístic':'#f472b6','Educació Física':'#a3e635','Treball globalitzat':'#facc15',
+  'Valors / Religió':'#94a3b8','Optatives':'#cbd5e1'
+};
+function ambitOf(name){
+  const u = name.toUpperCase();
+  if(/LLENG|ACOLLIDA/.test(u)) return 'Lingüístic';
+  if(/QU[IÍ]MICA|BIOLOG|MATEM|TECNOLOG|NATURA|INFORM/.test(u)) return 'Cientificotecnològic';
+  if(/SOCIAL|CL[AÀ]SSICA|HIST[OÒ]R|GEOGRAF/.test(u)) return 'Social i humanístic';
+  if(/M[UÚ]SICA|VISUAL|PL[AÀ]STICA|TEATRE|ART[IÍ]S|DIBUIX/.test(u)) return 'Artístic';
+  if(/F[IÍ]SICA/.test(u)) return 'Educació Física';
+  if(/TREBALL GLOBAL/.test(u)) return 'Treball globalitzat';
+  if(/RELIGI|VALORS|[ÈE]TIC/.test(u)) return 'Valors / Religió';
+  return 'Optatives';
+}
+const SYSTEMIC_NA = 40; // % de NA a partir del qual una matèria és "tema de junta", no individual
+
+function titleize(str){
+  return str.split(' ').map(w=>{
+    if(w!==w.toUpperCase()) return w;            // ja té minúscules: deixa-ho igual
+    if(w.length<=3) return w;                     // acrònims curts: VIP, OPT, núm.
+    return w.charAt(0)+w.slice(1).toLowerCase();  // BIOLOGIA -> Biologia
+  }).join(' ');
+}
+function short(s){
+  return titleize(s.replace('TECNOLOGIA I DIGITALITZACIÓ','Tecnologia')
+          .replace('EDUCACIÓ VISUAL I PLÀSTICA','Ed. Visual i Plàstica')
+          .replace('EDUCACIÓ FÍSICA','Ed. Física')
+          .replace('TREBALL GLOBALITZAT','Treball Globalitzat')
+          .replace('LLENG ','Llengua ')
+          .replace('CIÈNCIES SOCIALS','Ciències Socials')
+          .replace('CULTURA CLÀSSICA','Cultura Clàssica')
+          .replace('OPTATIVA TEATRE','Teatre'));
+}
+
+// estat global compartit entre render() i la fitxa individual
+let subjNA = {};
+function isSystemic(subj){return (subjNA[subj]||0) >= SYSTEMIC_NA;}
+function bestSubject(s){
+  let best=0, names=[];
+  D.subjects.forEach(sub=>{const g=s.grades[sub]; if(!g)return;
+    if(SCORE[g]>best){best=SCORE[g];names=[sub];} else if(SCORE[g]===best){names.push(sub);}});
+  if(best<=1) return null; // només NA: sense punt fort destacable
+  return names.slice(0,3).map(short).join(', ')+' ('+ORDER[best-1]+')';
+}
+
+// --- Perfils de l'alumnat (atenció a la diversitat en les dues direccions)
+function gradeCounts(s){const c={NA:0,AS:0,AN:0,AE:0};D.subjects.forEach(sub=>{const g=s.grades[sub];if(g)c[g]++;});return c;}
+const PROFILES = {
+  'En risc':    {color:'var(--na)', icon:'🔴', note:'Seguiment intensiu — 3 o més matèries no assolides'},
+  'Fràgil':     {color:'var(--as)', icon:'🟠', note:'Reforç preventiu — aprova just o amb 1-2 NA, sense consolidar'},
+  'Consolidat': {color:'var(--an)', icon:'🟢', note:'Manté un bon nivell — acompanyament ordinari'},
+  'Excel·lent': {color:'#38bdf8',   icon:'🔵', note:'Valorar ampliació i enriquiment'}
+};
+const PROFILE_ORDER = ['En risc','Fràgil','Consolidat','Excel·lent'];
+function profileOf(s){
+  if(s.fails>=3) return 'En risc';
+  if((s.avg||0)>=8) return 'Excel·lent';
+  if(s.fails>=1) return 'Fràgil';
+  const c=gradeCounts(s);
+  if((s.avg||0)<5.5 || (c.AN+c.AE)===0) return 'Fràgil';
+  return 'Consolidat';
+}
+// --- Mitjanes per àmbit (per al posicionament respecte el grup)
+function studentAmbitMean(s,a){let sum=0,n=0;D.subjects.forEach(sub=>{if(ambitOf(sub)!==a)return;const g=s.grades[sub];if(g){sum+=SCORE[g];n++;}});return n?sum/n:null;}
+function classAmbitMean(a){let sum=0,n=0;D.students.forEach(s=>D.subjects.forEach(sub=>{if(ambitOf(sub)!==a)return;const g=s.grades[sub];if(g){sum+=SCORE[g];n++;}}));return n?sum/n:null;}
+// --- Acords/mesures per alumne (només a la sessió, no es desen enlloc)
+const NOTES = {};
+function noteKey(id){return currentClass+'#'+id;}
+// --- Àrees instrumentals (decisives per a la promoció)
+function isInstrumental(sub){return ambitOf(sub)==='Lingüístic' || /MATEM/.test(sub.toUpperCase());}
+// --- Resum executiu en text pla (per copiar a l'acta)
+let briefText = '';
+// --- Vista competencial: mapeja la mitjana 0-10 a banda NA/AS/AN/AE
+let competencyMode = false;
+function avgBand(v){ if(v==null)return null; return v<5?'NA':v<7?'AS':v<8.5?'AN':'AE'; }
+function fmtAvg(v){ if(v==null)return '—'; return competencyMode ? avgBand(v) : v.toFixed(2); }
+function avgColor(v){ if(v==null)return 'var(--muted)';
+  if(competencyMode){const b=avgBand(v);return C[b];}
+  return v>=7?C.AN:v>=5?C.AS:C.NA; }
+// --- Objectius de millora (només a la sessió)
+const OBJECTIVES = {};
+
+function curStats(){
+  const a=D.students.reduce((x,s)=>x+(s.avg||0),0)/D.students.length;
+  let na=0,tot=0; D.students.forEach(s=>Object.values(s.grades).forEach(g=>{if(g){tot++;if(g==='NA')na++;}}));
+  return {avg:a, na: tot?na/tot*100:0};
+}
+function renderObjectives(){
+  const o = OBJECTIVES[currentClass] || (OBJECTIVES[currentClass]={avg:'',na:''});
+  const c = curStats();
+  // evolució vs trimestre anterior (per saber si ens hi acostem)
+  const terms=CLASSES[currentClass]; let prevC=null;
+  if(terms.length>=2){ const p=terms[terms.length-2];
+    const pa=p.students.reduce((x,s)=>x+(s.avg||0),0)/p.students.length;
+    let na=0,tot=0;p.students.forEach(s=>Object.values(s.grades).forEach(g=>{if(g){tot++;if(g==='NA')na++;}}));
+    prevC={avg:pa,na:tot?na/tot*100:0};
+  }
+  function block(label,cur,target,unit,higherBetter,prev){
+    const has = target!=='' && target!=null && !isNaN(+target);
+    let status='<span class="objstat none">defineix una fita</span>', bar='';
+    if(has){
+      const t=+target, ok = higherBetter? cur>=t : cur<=t;
+      const gap = higherBetter? t-cur : cur-t;
+      status = ok ? '<span class="objstat ok">✓ assolit</span>'
+                  : `<span class="objstat no">falten ${Math.abs(gap).toFixed(unit==='%'?0:2)}${unit}</span>`;
+      const pct = higherBetter? Math.min(100,cur/t*100) : Math.min(100,t/Math.max(cur,0.01)*100);
+      bar = `<div class="objbar"><i style="width:${Math.max(4,pct)}%;background:${ok?'var(--an)':'var(--as)'}"></i></div>`;
+    }
+    let trend='';
+    if(prev!=null){ const d=cur-prev; const good=higherBetter?d>0:d<0;
+      trend = `<span class="objtrend ${Math.abs(d)<0.005?'flat':good?'good':'bad'}">${d>0?'↑':d<0?'↓':'→'} ${prev.toFixed(unit==='%'?0:2)}→${cur.toFixed(unit==='%'?0:2)}${unit}</span>`;}
+    return `<div class="objrow">
+      <div class="objlab">${label}</div>
+      <div class="objval">${cur.toFixed(unit==='%'?0:2)}${unit} ${trend}</div>
+      <div class="objset">fita <input type="number" step="${unit==='%'?'1':'0.1'}" value="${target}" data-obj="${higherBetter?'avg':'na'}" style="width:62px"> ${unit}</div>
+      <div>${status}</div>
+      ${bar}
+    </div>`;
+  }
+  document.getElementById('objectives').innerHTML =
+    block('Mitjana del grup', c.avg, o.avg, '', true, prevC?prevC.avg:null) +
+    block('% de notes NA (com més baix millor)', c.na, o.na, '%', false, prevC?prevC.na:null);
+  document.querySelectorAll('#objectives input[data-obj]').forEach(inp=>{
+    inp.oninput=()=>{ OBJECTIVES[currentClass][inp.dataset.obj]=inp.value; renderObjectives(); };
+  });
+}
+
+function trendArrow(prev,cur,higherBetter){
+  if(prev==null||cur==null) return '<span class="tr flat">—</span>';
+  const d=cur-prev;
+  if(Math.abs(d)<0.005) return '<span class="tr flat">→ =</span>';
+  const good = higherBetter ? d>0 : d<0;
+  return `<span class="tr ${good?'good':'bad'}">${d>0?'↑':'↓'} ${d>0?'+':''}${d.toFixed(2)}</span>`;
+}
+
+function renderEvolution(){
+  const terms = CLASSES[currentClass];
+  const hint=document.getElementById('evoHint'), body=document.getElementById('evoBody');
+  if(!terms || terms.length<2){
+    hint.innerHTML = `Aquest grup té un sol trimestre carregat${terms[0].term?` (<b>${terms[0].term}</b>)`:''}. Puja els altres trimestres del mateix grup (amb la mateixa estructura) i aquí apareixerà la trajectòria de cada alumne i del grup. Els alumnes s'enllacen pel seu número.`;
+    body.innerHTML=''; return;
+  }
+  hint.textContent = `Comparativa de ${terms.length} trimestres · ↑ millora i ↓ davallada respecte el trimestre anterior`;
+  const labels = terms.map(t=>t.term||'—');
+  const clsAvg = terms.map(t=>{const v=t.students.map(s=>s.avg||0);return v.reduce((a,b)=>a+b,0)/(v.length||1);});
+  const clsNA  = terms.map(t=>{let na=0,tot=0;t.students.forEach(s=>Object.values(s.grades).forEach(g=>{if(g){tot++;if(g==='NA')na++;}}));return tot?na/tot*100:0;});
+
+  const chips = labels.map((l,i)=>`
+    <div class="evochip">
+      <div class="t">${l}</div>
+      <div class="v" style="color:${clsAvg[i]>=5?'var(--an)':'var(--na)'}">${clsAvg[i].toFixed(2)}</div>
+      <div class="s">mitjana classe · ${Math.round(clsNA[i])}% NA</div>
+      ${i>0?trendArrow(clsAvg[i-1],clsAvg[i],true):''}
+    </div>`).join('<span class="arrowsep">→</span>');
+
+  const rows = D.students.map(s=>s.id).map(id=>{
+    const avgs = terms.map(t=>{const x=t.students.find(y=>y.id===id);return x&&x.avg!=null?x.avg:null;});
+    const last=avgs[avgs.length-1], prev=avgs[avgs.length-2];
+    const delta=(last!=null&&prev!=null)?last-prev:null;
+    return {id,avgs,last,prev,delta};
+  }).sort((a,b)=>(a.delta==null?99:a.delta)-(b.delta==null?99:b.delta)); // davallades primer
+
+  const head = `<tr><th>Alumne</th>${labels.map(l=>`<th>${l}</th>`).join('')}<th>Tendència</th></tr>`;
+  const tbody = rows.map(r=>{
+    const cells = r.avgs.map(v=>{
+      if(v==null) return `<td class="evc" style="color:var(--muted)">—</td>`;
+      const col=v>=7?'var(--an)':v>=5?'var(--as)':'var(--na)';
+      return `<td class="evc" style="color:${col}">${v.toFixed(2)}</td>`;
+    }).join('');
+    return `<tr><td class="evname" onclick="openStudent(${r.id})">Alumne ${r.id}</td>${cells}<td>${trendArrow(r.prev,r.last,true)}</td></tr>`;
+  }).join('');
+
+  const drops = rows.filter(r=>r.delta!=null && r.delta<=-0.5);
+  const dropBox = drops.length
+    ? `<div class="dropbox"><b>⚠ Davallades a vigilar</b> (baixada ≥ 0,50 respecte el trimestre anterior): ${drops.map(r=>`<span class="tag warn2" onclick="openStudent(${r.id})">Alumne ${r.id} (${r.delta.toFixed(2)})</span>`).join(' ')}</div>`
+    : `<div class="dropbox ok">✓ Cap davallada significativa respecte el trimestre anterior</div>`;
+
+  // ---- evolució per àmbit competencial (mitjana 1-4)
+  function ambitMean(t,a){
+    let sum=0,n=0;
+    t.subjects.forEach(sub=>{ if(ambitOf(sub)!==a) return;
+      t.students.forEach(s=>{const g=s.grades[sub]; if(g){sum+=SCORE[g];n++;}});});
+    return n? sum/n : null;
+  }
+  const ambitsPresent = AMBIT_ORDER.filter(a=>D.subjects.some(sub=>ambitOf(sub)===a));
+  const aHead = `<tr><th>Àmbit</th>${labels.map(l=>`<th>${l}</th>`).join('')}<th>Tendència</th></tr>`;
+  const aBody = ambitsPresent.map(a=>{
+    const means = terms.map(t=>ambitMean(t,a));
+    const last=means[means.length-1], prev=means[means.length-2];
+    const cells = means.map(m=>{
+      if(m==null) return `<td class="evc" style="color:var(--muted)">—</td>`;
+      const col=m>=3?'var(--an)':m>=2?'var(--as)':'var(--na)';
+      return `<td class="evc" style="color:${col}">${m.toFixed(2)}</td>`;
+    }).join('');
+    return `<tr><td class="evname" style="cursor:default"><span class="dot" style="background:${AMBIT_COLOR[a]}"></span> ${a}</td>${cells}<td>${trendArrow(prev,last,true)}</td></tr>`;
+  }).join('');
+  const ambitTable = `<h3 class="evoh">Evolució per àmbit competencial <span>(mitjana 1–4)</span></h3>
+    <div class="hm-scroll"><table class="evotable"><thead>${aHead}</thead><tbody>${aBody}</tbody></table></div>`;
+
+  body.innerHTML = `<div class="evochips">${chips}</div>${dropBox}${ambitTable}
+    <h3 class="evoh">Trajectòria per alumne <span>(mitjana 0–10)</span></h3>
+    <div class="hm-scroll"><table class="evotable"><thead>${head}</thead><tbody>${tbody}</tbody></table></div>`;
+}
+
+// ---- group selector
+const sel = document.getElementById('groupSel');
+function refreshSelector(){
+  if(!sel) return;
+  sel.innerHTML = Object.keys(CLASSES).map(n=>{
+    const nt=CLASSES[n].length;
+    return `<option value="${n}"${n===currentClass?' selected':''}>${n}${nt>1?` (${nt} trim.)`:''}</option>`;
+  }).join('');
+}
+refreshSelector();
+if(sel) sel.addEventListener('change',()=>{currentClass=sel.value;setCurrent();render();});
+
+function render(){
+// ---- estat buit (encara no s'ha pujat cap Excel)
+const empty = !D;
+['kpis','viewTabs','mainGrid','foot'].forEach(id=>{const e=document.getElementById(id); if(e) e.style.display = empty?'none':'';});
+if(empty){
+  document.getElementById('hSub').textContent = 'Puja el teu Excel de notes per començar';
+  if(!document.getElementById('uploadMsg').textContent) setMsg('Encara no hi ha dades. Puja un fitxer .xlsx per veure el dashboard.');
+  return;
+}
+
+// ---- header
+document.getElementById('hTitle').textContent = D.title;
+document.getElementById('hSub').textContent = `${D.group} · ${D.term} · ${D.students.length} alumnes · ${D.subjects.length} matèries`;
+
+renderEvolution();
+renderObjectives();
+
+// ---- gather all grades
+let counts={NA:0,AS:0,AN:0,AE:0}, total=0;
+D.students.forEach(s=>{Object.values(s.grades).forEach(g=>{if(g){counts[g]++;total++;}})});
+
+const avgClass = D.students.reduce((a,s)=>a+(s.avg||0),0)/D.students.length;
+const passed = D.students.filter(s=>s.fails===0).length;
+const atRisk = D.students.filter(s=>s.fails>=3).length;
+
+// ---- KPIs
+const kpis = [
+  {v:D.students.length, l:'Alumnes', cls:''},
+  {v:fmtAvg(avgClass), l: competencyMode?'Nivell mitjà del grup':'Mitjana de la classe', cls: avgClass>=5?'good':'bad'},
+  {v:passed, l:'Alumnes sense suspesos', cls:'good'},
+  {v:atRisk, l:'Alumnes amb 3+ suspesos', cls:'bad'},
+  {v:Math.round(counts.NA/total*100)+'%', l:'Notes de no assoliment', cls:'warn'},
+];
+document.getElementById('kpis').innerHTML = kpis.map(k=>
+  `<div class="kpi ${k.cls}"><div class="v">${k.v}</div><div class="l">${k.l}</div></div>`).join('');
+
+// ---- Donut
+const donut = document.getElementById('donut');
+let acc=0, segs=[];
+ORDER.forEach(k=>{
+  const pct = counts[k]/total*100;
+  segs.push(`${C[k]} ${acc}% ${acc+pct}%`); acc+=pct;
+});
+donut.style.background = `conic-gradient(${segs.join(',')})`;
+donut.style.maskImage='radial-gradient(circle, transparent 52px, #000 53px)';
+donut.style.webkitMaskImage='radial-gradient(circle, transparent 52px, #000 53px)';
+document.getElementById('donutN').textContent = total;
+document.getElementById('donutLegend').innerHTML = ORDER.map(k=>
+  `<div><span class="dot" style="background:${C[k]}"></span><b>${k}</b> · ${LABEL[k]} — ${counts[k]} (${Math.round(counts[k]/total*100)}%)</div>`).join('');
+
+// ---- Ranking
+const ranked = [...D.students].sort((a,b)=>(b.avg||0)-(a.avg||0));
+document.getElementById('ranking').innerHTML = ranked.map(s=>{
+  const v=s.avg||0;
+  const col = avgColor(v);
+  return `<div class="barrow" onclick="openStudent(${s.id})">
+    <span class="name">Alumne ${s.id}</span>
+    <div class="bar"><i style="width:${v/10*100}%;background:${col}"></i></div>
+    <span class="val" style="color:${col}">${fmtAvg(v)}</span>
+  </div>`;
+}).join('');
+
+// ---- legends
+const legHtml = ORDER.map(k=>`<span><span class="dot" style="background:${C[k]}"></span>${k} — ${LABEL[k]}</span>`).join('')
+  + `<span><span class="dot" style="background:var(--none)"></span>no cursa</span>`;
+document.getElementById('legend1').innerHTML = legHtml;
+document.getElementById('legend2').innerHTML = legHtml;
+
+// ---- Subjects (per-subject distribution, computed from students)
+function subjStats(subj){
+  let c={NA:0,AS:0,AN:0,AE:0}, n=0, sum=0;
+  D.students.forEach(s=>{const g=s.grades[subj]; if(g){c[g]++;n++;sum+=SCORE[g];}});
+  return {c,n,fails:c.NA, pctNA:n?c.NA/n*100:0, mean:n?sum/n:0};
+}
+const subjList = D.subjects.map(s=>({name:s, ...subjStats(s)})).filter(s=>s.n>0)
+  .sort((a,b)=>b.fails-a.fails || b.pctNA-a.pctNA);
+subjNA = {}; subjList.forEach(s=>subjNA[s.name]=s.pctNA); // % NA per matèria (global)
+document.getElementById('subjects').innerHTML = subjList.map(s=>{
+  const crit = isSystemic(s.name);
+  const stack = ORDER.map(k=>{
+    if(!s.c[k]) return '';
+    const pct = Math.round(s.c[k]/s.n*100);
+    const w = s.c[k]/s.n*100;
+    return `<i style="width:${w}%;background:${C[k]}" title="${k}: ${s.c[k]} alumnes (${pct}%)">${w>=9?pct+'%':''}</i>`;
+  }).join('');
+  return `<div class="subj">
+    <div class="top">
+      <span class="nm ${crit?'crit':''}">${crit?'⚠ ':''}${short(s.name)}${crit?' · revisar a la junta':''}</span>
+      <span class="mt">${s.fails} NA · ${s.n} alumnes · mitjana competencial ${s.mean.toFixed(2)}/4</span>
+    </div>
+    <div class="stack">${stack}</div>
+  </div>`;
+}).join('');
+
+// ---- Resultats per àmbit competencial
+document.getElementById('legend3').innerHTML = ORDER.map(k=>`<span><span class="dot" style="background:${C[k]}"></span>${k}</span>`).join('');
+const ambitMap = {};  // àmbit -> {subjects:[], c:{}, n, sum}
+D.subjects.forEach(sub=>{
+  const a = ambitOf(sub);
+  if(!ambitMap[a]) ambitMap[a]={subjects:[],c:{NA:0,AS:0,AN:0,AE:0},n:0,sum:0};
+  ambitMap[a].subjects.push(sub);
+});
+D.students.forEach(st=>D.subjects.forEach(sub=>{
+  const g=st.grades[sub]; if(!g) return;
+  const a=ambitMap[ambitOf(sub)]; a.c[g]++; a.n++; a.sum+=SCORE[g];
+}));
+const ambitList = AMBIT_ORDER.filter(a=>ambitMap[a] && ambitMap[a].n>0).map(a=>({name:a,...ambitMap[a]}));
+document.getElementById('ambits').innerHTML = ambitList.map(a=>{
+  const stack = ORDER.map(k=>{
+    if(!a.c[k]) return '';
+    const w=a.c[k]/a.n*100, pct=Math.round(w);
+    return `<i style="width:${w}%;background:${C[k]}" title="${k}: ${a.c[k]} (${pct}%)">${w>=9?pct+'%':''}</i>`;
+  }).join('');
+  return `<div class="subj">
+    <div class="top">
+      <span class="nm"><span class="dot" style="background:${AMBIT_COLOR[a.name]}"></span> ${a.name}
+        <span style="color:var(--muted);font-weight:400"> · ${a.subjects.map(short).join(', ')}</span></span>
+      <span class="mt">mitjana ${(a.sum/a.n).toFixed(2)}/4</span>
+    </div>
+    <div class="stack">${stack}</div>
+  </div>`;
+}).join('');
+
+// ---- Alumnes a tocar d'aprovar (1-2 NA)
+const close = D.students.filter(s=>s.fails>=1 && s.fails<=2).sort((a,b)=>a.fails-b.fails || (b.avg||0)-(a.avg||0));
+document.getElementById('close').innerHTML = close.map(s=>{
+  const failed = D.subjects.filter(sub=>s.grades[sub]==='NA');
+  return `<div class="r warn">
+    <div class="h"><b style="cursor:pointer" onclick="openStudent(${s.id})">Alumne ${s.id}</b>
+      <span class="badge">${s.fails} ${s.fails===1?'matèria':'matèries'}${s.avg?` · ${fmtAvg(s.avg)}`:''}</span></div>
+    <div class="subs">${failed.map(f=>`<span class="tag ${isSystemic(f)?'sys':''}">${isSystemic(f)?'⚠ ':''}${short(f)}</span>`).join('')}</div>
+  </div>`;
+}).join('') || '<div style="color:var(--muted)">Cap alumne amb 1 o 2 matèries suspeses</div>';
+
+// ---- Heatmap
+const hmSubjOrder = subjList.map(s=>s.name); // hardest first
+let thead = '<tr><th class="corner"></th>'+hmSubjOrder.map(s=>`<th><div class="rot">${short(s)}</div></th>`).join('')+'<th><div class="rot">Mitjana</div></th></tr>';
+let tbody = D.students.map(st=>{
+  const cells = hmSubjOrder.map(subj=>{
+    const g = st.grades[subj];
+    if(!g) return `<td><div class="cell empty"></div></td>`;
+    return `<td><div class="cell" style="background:${C[g]}">${g}</div></td>`;
+  }).join('');
+  const v=st.avg||0;
+  return `<tr><td class="rowh" onclick="openStudent(${st.id})">Alumne ${st.id}</td>${cells}<td class="avgcell" style="color:${avgColor(v)}">${fmtAvg(v)}</td></tr>`;
+}).join('');
+document.getElementById('heatmap').innerHTML = `<table class="hm"><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
+
+// ---- Risk
+const risk = D.students.filter(s=>s.fails>=3).sort((a,b)=>b.fails-a.fails);
+document.getElementById('risk').innerHTML = risk.map(s=>{
+  const failed = D.subjects.filter(sub=>s.grades[sub]==='NA');
+  const indiv = failed.filter(f=>!isSystemic(f)).length;
+  const strong = bestSubject(s);
+  return `<div class="r">
+    <div class="h"><b style="cursor:pointer" onclick="openStudent(${s.id})">Alumne ${s.id}</b>
+      <span class="badge">${s.fails} ${s.fails===1?'matèria':'matèries'} · ${indiv} individual${indiv===1?'':'s'}</span></div>
+    <div class="subs">${failed.map(f=>`<span class="tag ${isSystemic(f)?'sys':''}">${isSystemic(f)?'⚠ ':''}${short(f)}</span>`).join('')}</div>
+    ${strong?`<div class="strong">💪 Punt fort: ${strong}</div>`:''}
+  </div>`;
+}).join('') || '<div style="color:var(--muted)">Cap alumne amb 3 o més matèries suspeses 🎉</div>';
+
+// ---- Perfils de l'alumnat
+const byProfile = {}; PROFILE_ORDER.forEach(p=>byProfile[p]=[]);
+D.students.forEach(s=>byProfile[profileOf(s)].push(s));
+document.getElementById('profiles').innerHTML = PROFILE_ORDER.map(p=>{
+  const meta=PROFILES[p], list=byProfile[p];
+  return `<div class="pcol" style="border-top:3px solid ${meta.color}">
+    <div class="ph"><span>${meta.icon} ${p}</span><span class="pn">${list.length}</span></div>
+    <div class="pnote">${meta.note}</div>
+    <div class="plist">${list.sort((a,b)=>(b.avg||0)-(a.avg||0)).map(s=>
+      `<span class="pchip" onclick="openStudent(${s.id})">Alumne ${s.id} <small>${fmtAvg(s.avg)}</small></span>`).join('') || '<span class="pempty">—</span>'}</div>
+  </div>`;
+}).join('');
+
+// ---- Propostes de grups de reforç (alumnes amb NA a la mateixa matèria)
+const groups = D.subjects.map(sub=>({
+  sub, students: D.students.filter(s=>s.grades[sub]==='NA')
+})).filter(g=>g.students.length>=2).sort((a,b)=>b.students.length-a.students.length);
+document.getElementById('reinforce').innerHTML = groups.map(g=>
+  `<div class="rg">
+    <div class="rgh"><b>${isSystemic(g.sub)?'⚠ ':''}${short(g.sub)}</b><span class="rgn">${g.students.length} alumnes</span></div>
+    <div class="subs">${g.students.map(s=>`<span class="pchip" onclick="openStudent(${s.id})">Alumne ${s.id}</span>`).join('')}</div>
+  </div>`).join('') || '<div style="color:var(--muted)">No hi ha matèries amb 2 o més alumnes a recuperar.</div>';
+
+// ---- Cohesió del grup (dispersió de mitjanes + histograma)
+const avgs = D.students.map(s=>s.avg||0);
+const sd = Math.sqrt(avgs.reduce((a,v)=>a+(v-avgClass)**2,0)/avgs.length);
+const minA=Math.min(...avgs), maxA=Math.max(...avgs);
+const cohLabel = sd<1.0?'Grup homogeni' : sd<1.8?'Heterogeneïtat moderada' : 'Grup polaritzat';
+const cohNote  = sd<1.0?'Es pot mantenir un ritme comú.' : sd<1.8?'Convé alguna activitat diferenciada.' : 'Cal diferenciar molt: conviuen nivells molt distints.';
+const cohColor = sd<1.0?'var(--an)' : sd<1.8?'var(--as)' : 'var(--na)';
+const bins=[{l:'< 5',a:0,b:5},{l:'5–6',a:5,b:6},{l:'6–7',a:6,b:7},{l:'7–8',a:7,b:8},{l:'8–10',a:8,b:10.01}];
+const binN=bins.map(bn=>avgs.filter(v=>v>=bn.a&&v<bn.b).length);
+const maxBin=Math.max(...binN,1);
+document.getElementById('cohesion').innerHTML = `
+  <div class="cohtop">
+    <div class="cohstat"><div class="v" style="color:${cohColor}">${cohLabel}</div><div class="l">desviació ${sd.toFixed(2)} · recorregut ${minA.toFixed(1)}–${maxA.toFixed(1)}</div><div class="l">${cohNote}</div></div>
+    <div class="cohhist">${bins.map((bn,i)=>`
+      <div class="cb"><div class="cbar" style="height:${binN[i]/maxBin*90+8}px;background:${bn.a>=5?'var(--an)':'var(--na)'}" title="${binN[i]} alumnes"></div><div class="cbn">${binN[i]}</div><div class="cbl">${bn.l}</div></div>`).join('')}
+    </div>
+  </div>`;
+
+// ---- Àrees instrumentals
+const instr = D.students.map(s=>({s, fails:D.subjects.filter(sub=>isInstrumental(sub)&&s.grades[sub]==='NA')}))
+  .filter(x=>x.fails.length>0).sort((a,b)=>b.fails.length-a.fails.length);
+document.getElementById('instrumental').innerHTML = instr.map(({s,fails})=>
+  `<div class="r">
+    <div class="h"><b style="cursor:pointer" onclick="openStudent(${s.id})">Alumne ${s.id}</b>
+      <span class="badge">${fails.length} instrumental${fails.length===1?'':'s'}</span></div>
+    <div class="subs">${fails.map(f=>`<span class="tag ${isSystemic(f)?'sys':''}">${isSystemic(f)?'⚠ ':''}${short(f)}</span>`).join('')}</div>
+  </div>`).join('') || '<div style="color:var(--muted)">Cap alumne amb NA en àrees instrumentals 🎉</div>';
+
+// ---- Resum executiu (HTML + text per copiar)
+const sysList = subjList.filter(x=>isSystemic(x.name)).map(x=>short(x.name));
+const terms = CLASSES[currentClass];
+let evoTxt='';
+if(terms.length>=2){
+  const prev=terms[terms.length-2];
+  const pAvg=prev.students.reduce((a,s)=>a+(s.avg||0),0)/prev.students.length;
+  const d=avgClass-pAvg;
+  evoTxt = ` (${d>=0?'+':''}${d.toFixed(2)} respecte ${prev.term||'el trimestre anterior'})`;
+}
+const nRisc=byProfile['En risc'].length, nExc=byProfile['Excel·lent'].length, nFragil=byProfile['Fràgil'].length;
+const lines = [
+  `${D.group} · ${D.term} — ${D.students.length} alumnes`,
+  `Mitjana del grup: ${avgClass.toFixed(2)}${evoTxt}. Aprovats sense suspesos: ${passed}/${D.students.length} (${Math.round(counts.NA/total*100)}% de notes NA).`,
+  `Cohesió: ${cohLabel.toLowerCase()} (desviació ${sd.toFixed(2)}). ${cohNote}`,
+];
+const prio = [];
+if(sysList.length) prio.push(`Revisar en junta (≥40% NA): ${sysList.join(', ')}.`);
+if(instr.length)   prio.push(`${instr.length} alumnes amb NA en àrees instrumentals (llengües/matemàtiques).`);
+if(nRisc)          prio.push(`Seguiment intensiu de ${nRisc} alumnes en risc.`);
+if(nFragil)        prio.push(`Reforç preventiu per a ${nFragil} alumnes fràgils.`);
+if(nExc)           prio.push(`Preveure ampliació/enriquiment per a ${nExc} alumnes.`);
+if(sd>=1.8)        prio.push(`Grup polaritzat: diferenciar la metodologia.`);
+briefText = lines.join('\n') + '\nPrioritats:\n' + prio.map(p=>'· '+p).join('\n');
+document.getElementById('brief').innerHTML =
+  lines.map(l=>`<p class="bl">${l}</p>`).join('') +
+  `<div class="briefprio"><b>Prioritats</b><ul>${prio.map(p=>`<li>${p}</li>`).join('')}</ul></div>`;
+
+document.getElementById('foot').textContent = `${D.title} · ${D.group} · ${D.term} · escala competencial NA · AS · AN · AE`;
+} // end render()
+
+// ---- Modal
+let openId = null;
+function openStudent(id){
+  openId = id;
+  const s = D.students.find(x=>x.id===id);
+  const prof = profileOf(s), pm = PROFILES[prof];
+  document.getElementById('mName').innerHTML = `Alumne ${s.id} <span class="pbadge" style="background:${pm.color}">${pm.icon} ${prof}</span>`;
+  const v=s.avg||0;
+  const strong = bestSubject(s);
+  const failed = D.subjects.filter(sub=>s.grades[sub]==='NA');
+  const indiv = failed.filter(f=>!isSystemic(f));
+  const sys = failed.filter(f=>isSystemic(f));
+  let meta = `${D.group} · ${D.term} · ${competencyMode?'nivell':'mitjana'} ${fmtAvg(v)} · ${s.fails} ${s.fails===1?'matèria suspesa':'matèries suspeses'}`;
+  document.getElementById('mMeta').innerHTML = meta
+    + `<div class="mline" style="color:${pm.color}">${pm.icon} Perfil: <b>${prof}</b> — ${pm.note}</div>`
+    + (strong?`<div class="mline ok">💪 Punt fort: ${strong}</div>`:'')
+    + (indiv.length?`<div class="mline bad">🎯 A treballar (individual): ${indiv.map(short).join(', ')}</div>`:'')
+    + (sys.length?`<div class="mline sys">⚠ NA també a mitja classe (tema de junta): ${sys.map(short).join(', ')}</div>`:'');
+
+  // notes agrupades per àmbit + posicionament respecte el grup
+  const byAmbit = {};
+  D.subjects.forEach(sub=>{ if(!s.grades[sub])return; const a=ambitOf(sub); (byAmbit[a]=byAmbit[a]||[]).push(sub); });
+  document.getElementById('mGrades').innerHTML = AMBIT_ORDER.filter(a=>byAmbit[a]).map(a=>{
+    const sm=studentAmbitMean(s,a), cm=classAmbitMean(a);
+    let pos='';
+    if(sm!=null&&cm!=null){const d=sm-cm;
+      pos = d>=0.4?`<span class="pos up">▲ per sobre del grup</span>`
+          : d<=-0.4?`<span class="pos down">▼ per sota del grup</span>`
+          : `<span class="pos mid">● a la mitjana</span>`;}
+    const rows = byAmbit[a].map(sub=>{
+      const g=s.grades[sub];
+      const flag = g==='NA' && isSystemic(sub) ? ' <span class="sysmark" title="NA compartit per ≥40% de la classe">⚠</span>':'';
+      return `<div class="g"><span>${short(sub)}${flag}</span>
+        <span class="pill" style="background:${C[g]}">${g}</span></div>`;
+    }).join('');
+    return `<div class="ambitgrp"><div class="ambith"><span><span class="dot" style="background:${AMBIT_COLOR[a]}"></span>${a}</span>${pos}</div>${rows}</div>`;
+  }).join('');
+
+  // llegenda explicada (per a famílies)
+  document.getElementById('mLegend').innerHTML = '<b>Escala competencial:</b> ' +
+    ORDER.map(k=>`<span><span class="dot" style="background:${C[k]}"></span><b>${k}</b> ${LABEL[k]}</span>`).join('');
+
+  // acords (es mantenen durant la sessió)
+  const ta = document.getElementById('mNotes');
+  ta.value = NOTES[noteKey(id)] || '';
+  ta.oninput = ()=>{ NOTES[noteKey(id)] = ta.value; };
+  document.getElementById('mPrint').onclick = ()=>{ document.body.classList.add('print-student'); window.print(); };
+
+  document.getElementById('modal').classList.add('open');
+}
+window.addEventListener('afterprint',()=>document.body.classList.remove('print-student'));
+function closeModal(){document.getElementById('modal').classList.remove('open');}
+document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+
+// ============ PUJADA D'EXCEL (parseig dins del navegador) ============
+// --- Lectura del ZIP (.xlsx) via directori central + DecompressionStream
+async function readXlsxFiles(buffer){
+  const dv = new DataView(buffer), u8 = new Uint8Array(buffer);
+  // localitzar End Of Central Directory (signatura 0x06054b50)
+  let eocd = -1;
+  for(let i=u8.length-22;i>=0;i--){ if(dv.getUint32(i,true)===0x06054b50){eocd=i;break;} }
+  if(eocd<0) throw new Error('No sembla un fitxer .xlsx vàlid');
+  const count = dv.getUint16(eocd+10,true);
+  let off = dv.getUint32(eocd+16,true);
+  const want = {};
+  for(let n=0;n<count;n++){
+    if(dv.getUint32(off,true)!==0x02014b50) break;
+    const method = dv.getUint16(off+10,true);
+    const compSize = dv.getUint32(off+20,true);
+    const nameLen = dv.getUint16(off+28,true);
+    const extraLen = dv.getUint16(off+30,true);
+    const commLen = dv.getUint16(off+32,true);
+    const localOff = dv.getUint32(off+42,true);
+    const name = new TextDecoder().decode(u8.subarray(off+46,off+46+nameLen));
+    if(name==='xl/sharedStrings.xml' || name==='xl/worksheets/sheet1.xml'){
+      want[name] = {method, compSize, localOff};
+    }
+    off += 46 + nameLen + extraLen + commLen;
+  }
+  const out = {};
+  for(const name in want){
+    const e = want[name];
+    const lNameLen = dv.getUint16(e.localOff+26,true);
+    const lExtraLen = dv.getUint16(e.localOff+28,true);
+    const dataStart = e.localOff + 30 + lNameLen + lExtraLen;
+    const comp = u8.subarray(dataStart, dataStart + e.compSize);
+    let bytes;
+    if(e.method===0){ bytes = comp; }            // sense compressió
+    else {                                        // deflate
+      const ds = new DecompressionStream('deflate-raw');
+      const ab = await new Response(new Blob([comp]).stream().pipeThrough(ds)).arrayBuffer();
+      bytes = new Uint8Array(ab);
+    }
+    out[name] = new TextDecoder('utf-8').decode(bytes);
+  }
+  if(!out['xl/worksheets/sheet1.xml']) throw new Error('No s\'ha trobat el full de càlcul');
+  return out;
+}
+
+function colToIdx(col){let n=0;for(const ch of col)n=n*26+(ch.charCodeAt(0)-64);return n;}
+function idxToCol(n){let s='';while(n>0){const r=(n-1)%26;s=String.fromCharCode(65+r)+s;n=(n-(r+1))/26;}return s;}
+
+// --- mateixa lògica que parse.py, però sobre el XML
+function parseGroup(files, fallbackName){
+  const P = new DOMParser();
+  const ssDoc = files['xl/sharedStrings.xml'] ? P.parseFromString(files['xl/sharedStrings.xml'],'application/xml') : null;
+  const ss = [];
+  if(ssDoc){ ssDoc.querySelectorAll('si').forEach(si=>{
+    let txt=''; si.querySelectorAll('t').forEach(t=>txt+=t.textContent||''); ss.push(txt);
+  });}
+  const shDoc = P.parseFromString(files['xl/worksheets/sheet1.xml'],'application/xml');
+  const cells = {};
+  shDoc.querySelectorAll('c').forEach(c=>{
+    const v = c.querySelector('v'); if(!v) return;
+    cells[c.getAttribute('r')] = c.getAttribute('t')==='s' ? ss[+v.textContent] : v.textContent;
+  });
+  const get=(col,row)=>cells[col+row];
+
+  // fila 1 -> matèries + columnes Mitjana/Suspesos
+  const row1=[];
+  for(const k in cells){ const m=k.match(/^([A-Z]+)1$/); if(m) row1.push([colToIdx(m[1]),m[1],cells[k]]); }
+  row1.sort((a,b)=>a[0]-b[0]);
+  const subjects=[]; let avgCol=null, failsCol=null;
+  for(const [,col,val] of row1){
+    if(col==='A'||col==='B') continue;
+    if(val==='Mitjana'){avgCol=col;continue;}
+    if(val==='Suspesos'){failsCol=col;continue;}
+    if(val && val.trim()) subjects.push([val.trim(),col]);
+  }
+  const titleCell = get('B',1)||'';
+  const parts = titleCell.split('\n').map(s=>s.trim()).filter(Boolean);
+  const title = parts[0]||'Institut';
+  const group = parts[1]||fallbackName;
+  const term  = parts[2] ? parts[2].replace(/\b\w/,c=>c.toUpperCase()).replace(/\bTRIMESTRE\b/i,'Trimestre') : '';
+
+  const students=[]; let r=3;
+  while(r<=250){
+    const b=get('B',r);
+    if(b==='Mitjana Matèria') break;
+    if(b!=null && /^\d+$/.test(String(b).trim())){
+      const grades={};
+      subjects.forEach(([name,col])=>{const g=get(col,r);grades[name]=g?g.trim():null;});
+      const avgRaw = avgCol?get(avgCol,r):null;
+      let avg=null; if(avgRaw){const mm=String(avgRaw).match(/(\d+(?:\.\d+)?)/); if(mm)avg=parseFloat(mm[1]);}
+      let fails=0; const fr=failsCol?get(failsCol,r):null; if(fr&&/^\d+$/.test(String(fr).trim()))fails=parseInt(fr);
+      students.push({id:parseInt(b),grades,avg,fails});
+    } else if(b==null && get('C',r)==null && r>60){ break; }
+    r++;
+  }
+  if(!students.length) throw new Error('No s\'han trobat alumnes; comprova el format del full');
+  return {title,group,term,subjects:subjects.map(s=>s[0]),students};
+}
+
+const drop=document.getElementById('drop');
+const fileInput=document.getElementById('fileInput');
+const upMsg=document.getElementById('uploadMsg');
+function setMsg(txt,cls){upMsg.textContent=txt;upMsg.className='upmsg'+(cls?' '+cls:'');}
+
+async function handleFile(file){
+  if(!file) return;
+  if(!file.name.toLowerCase().endsWith('.xlsx')){ setMsg('El fitxer ha de ser .xlsx','err'); return; }
+  setMsg('Processant «'+file.name+'»…');
+  try{
+    const buf = await file.arrayBuffer();
+    const files = await readXlsxFiles(buf);
+    const g = parseGroup(files, file.name.replace(/\.xlsx$/i,''));
+    const arr = (CLASSES[g.group] = CLASSES[g.group] || []);
+    // mateix grup + mateix trimestre => substitueix; si no, s'afegeix com a nou trimestre
+    const ix = arr.findIndex(x=>termNum(x.term)===termNum(g.term) && (x.term||'')===(g.term||''));
+    if(ix>=0) arr[ix]=g; else arr.push(g);
+    arr.sort((a,b)=>termNum(a.term)-termNum(b.term));
+    currentClass = g.group; refreshSelector(); setCurrent(); render();
+    const nt = arr.length;
+    setMsg(`✓ «${g.group}»${g.term?' · '+g.term:''} carregat: ${g.students.length} alumnes, ${g.subjects.length} matèries`
+      + (nt>1?` · ${nt} trimestres → mira l'evolució a dalt`:''),'ok');
+  }catch(err){ setMsg('Error: '+err.message,'err'); }
+}
+
+document.getElementById('browseBtn').addEventListener('click',()=>fileInput.click());
+drop.addEventListener('click',e=>{ if(e.target.id!=='browseBtn') fileInput.click(); });
+fileInput.addEventListener('change',e=>handleFile(e.target.files[0]));
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over');}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over');}));
+drop.addEventListener('drop',e=>handleFile(e.dataTransfer.files[0]));
+
+document.getElementById('printBtn').addEventListener('click',()=>window.print());
+window.addEventListener('load',()=>applyView());
+
+// ---- Vistes per moment (Junta / Tutoria / Dades)
+let view='tot';
+const viewTabs=document.getElementById('viewTabs');
+viewTabs.addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b)return;
+  view=b.dataset.view;
+  [...viewTabs.children].forEach(x=>x.classList.toggle('active',x===b));
+  applyView();
+});
+function applyView(){
+  document.querySelectorAll('#mainGrid > .card').forEach(card=>{
+    const vs=(card.dataset.view||'').split(' ');
+    card.style.display = (view==='tot' || vs.includes(view)) ? '' : 'none';
+  });
+}
+
+// ---- Vista competencial
+document.getElementById('compBtn').addEventListener('click',function(){
+  competencyMode=!competencyMode; this.classList.toggle('on',competencyMode); render();
+});
+
+// ---- Copiar resum executiu
+document.getElementById('copyBrief').addEventListener('click',async function(){
+  try{ await navigator.clipboard.writeText(briefText); this.textContent='✓ Copiat'; }
+  catch(e){ this.textContent='✗ No s\'ha pogut copiar'; }
+  setTimeout(()=>this.textContent='📋 Copiar',1800);
+});
+
+// ---- Exportar CSV (separador ; i coma decimal, per a Excel en català)
+document.getElementById('csvBtn').addEventListener('click',()=>{
+  const subs=D.subjects;
+  const head=['Alumne','Mitjana','Suspesos','Perfil',...subs.map(short),'Acords'];
+  const rows=D.students.map(s=>[
+    'Alumne '+s.id, (s.avg!=null?s.avg.toFixed(2):'').replace('.',','), s.fails, profileOf(s),
+    ...subs.map(sub=>s.grades[sub]||''), (NOTES[noteKey(s.id)]||'').replace(/\s+/g,' ')
+  ]);
+  const csv=[head,...rows].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(';')).join('\r\n');
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`${D.group}_${D.term||''}`.replace(/\s+/g,'_').replace(/_+$/,'')+'.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+});
+
+// ---- Mode daltònic: paleta Okabe-Ito (càlids = suspès, freds = aprovat). Canvia variables en viu.
+let cbOn=false;
+const PALETTE={normal:{na:'#ef4444',as:'#f59e0b',an:'#22c55e',ae:'#3b82f6'},
+               cb:{na:'#D55E00',as:'#E69F00',an:'#56B4E9',ae:'#0072B2'}};
+document.getElementById('cbBtn').addEventListener('click',()=>{
+  cbOn=!cbOn;
+  const p=cbOn?PALETTE.cb:PALETTE.normal, r=document.documentElement.style;
+  r.setProperty('--na',p.na);r.setProperty('--as',p.as);r.setProperty('--an',p.an);r.setProperty('--ae',p.ae);
+  document.getElementById('cbBtn').classList.toggle('on',cbOn);
+  render(); // redibuixa el donut (gradient calculat en JS)
+});
+
+render();
+</script>
+</body>
+</html>
